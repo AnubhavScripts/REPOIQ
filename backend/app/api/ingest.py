@@ -1,8 +1,8 @@
 from fastapi import APIRouter,Depends,BackgroundTasks,HTTPException
 from sqlalchemy.orm import Session
-from app.models.schemas import Ingestrequest,IngestResponse
+from app.models.schemas import Ingestrequest,IngestResponse,StatusResponse
 from app.database.connection import get_db,SessionLocal
-from app.services.github_service import clone_repository
+from app.services.github_service import clone_repository, delete_repository
 from app.services.parser_service import parse_repository
 from app.services.chunk_service import chunk_repository_files
 from app.services.embedding_Service import generate_embeddings
@@ -10,7 +10,8 @@ from app.vectorstore.qdrant_Service import store_vectors
 from app.database.crud import (
     create_repository,
     create_indexing_job,
-    update_indexing_job_status
+    update_indexing_job_status,
+    get_job_status
 )
 router = APIRouter()
 
@@ -55,6 +56,8 @@ def process_repository(
     )
   finally:
     db.close()
+    if 'local_path' in locals() and local_path:
+      delete_repository(local_path)
 
 @router.post(
   "/ingest",
@@ -88,11 +91,22 @@ def ingest_repository(
           status_code=500,
           detail=str(e)
        )
-
-
-
-
-
-
+@router.get(
+  "/status/{repo_id}",
+  response_model=StatusResponse
+)
+def get_status(
+  repo_id: int,
+  db: Session = Depends(get_db)
+):
+  """ poll the indexing job status for a given repo """
+  job = get_job_status(db=db, repo_id=repo_id)
+  if not job:
+    raise HTTPException(status_code=404, detail="No indexing job found for this repo")
+  return StatusResponse(
+    repo_id=str(repo_id),
+    status=job.status,
+    error_message=job.error_message
+  )
 
 

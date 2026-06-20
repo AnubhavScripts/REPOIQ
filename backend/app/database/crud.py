@@ -60,3 +60,14 @@ def update_indexing_job_status(
     db.commit()
     db.refresh(job)
     return job
+
+def get_job_status(
+        db: Session,
+        repo_id: int
+):
+    """ get the current indexing job status for a repo """
+    return (
+        db.query(IndexingJob).filter(
+            IndexingJob.repo_id == repo_id
+        ).first()
+    )

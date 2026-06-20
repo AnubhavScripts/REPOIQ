@@ -1,5 +1,6 @@
 import os
 import shutil 
+import uuid
 # pyrefly: ignore [missing-import] #since we are using venv and pyrefly is scanning the gloval env so
 #it was showing this import error , following prompt remove the error from the ui 
 from git import Repo
@@ -10,6 +11,7 @@ def clone_repository(repo_url:str) -> str:
     """ Clones Github repo and returns local path """
 
     repo_name=repo_url.rstrip("/").split("/")[-1]
+    unique_name = f"{repo_name}_{uuid.uuid4().hex[:8]}"
 
     os.makedirs(
         settings.TEMP_REPO_PATH,
@@ -17,14 +19,14 @@ def clone_repository(repo_url:str) -> str:
     )
     local_path=os.path.join(
         settings.TEMP_REPO_PATH,
-        repo_name
+        unique_name
     )
     if os.path.exists(local_path):
         shutil.rmtree(local_path)
     try:
         Repo.clone_from(repo_url,local_path)
     except Exception as e :
-        raise Exception("failed to clone the repository:{str{e}}")
+        raise Exception(f"failed to clone the repository: {e}")
     return local_path
 
 def delete_repository(

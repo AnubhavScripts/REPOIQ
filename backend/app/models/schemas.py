@@ -8,6 +8,11 @@ class IngestResponse(BaseModel):
     repo_id:str
     status : str
 
+class StatusResponse(BaseModel):
+    repo_id: str
+    status: str
+    error_message: str | None = None
+
 
 
 class ChatRequest(BaseModel):
