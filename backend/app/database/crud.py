@@ -1,6 +1,14 @@
 from sqlalchemy.orm import Session
 from app.database.models import Repository, IndexingJob
 
+def get_repository_by_url(db: Session, repo_url: str):
+    """Check if a repo URL has already been indexed."""
+    return (
+        db.query(Repository)
+        .filter(Repository.repo_url == repo_url)
+        .first()
+    )
+
 def create_repository(
         db:Session,
         repo_url:str

@@ -20,3 +20,7 @@ export const chat = async (repoId, question) => {
         question: question,
     });
 };
+
+export const reviewRepo = async (repoId) => {
+    return API.post("/api/review", { repo_id: repoId });
+};

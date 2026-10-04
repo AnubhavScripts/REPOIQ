@@ -1,11 +1,35 @@
 import os
-import shutil 
+import shutil
 import uuid
+import subprocess
 # pyrefly: ignore [missing-import] #since we are using venv and pyrefly is scanning the gloval env so
 #it was showing this import error , following prompt remove the error from the ui 
 from git import Repo
 
 from app.config import settings
+
+def validate_repo_accessible(repo_url: str):
+    """
+    Quickly verify the repo URL is reachable and public before cloning.
+    Raises a clear exception if it's private, non-existent, or invalid.
+    """
+    try:
+        result = subprocess.run(
+            ["git", "ls-remote", "--heads", repo_url],
+            capture_output=True,
+            text=True,
+            timeout=15
+        )
+        if result.returncode != 0:
+            stderr = result.stderr.strip()
+            if "Authentication failed" in stderr or "not found" in stderr.lower():
+                raise Exception(
+                    "Repository is private or does not exist. "
+                    "Only public GitHub repositories are supported."
+                )
+            raise Exception(f"Cannot access repository: {stderr or 'unknown error'}")
+    except subprocess.TimeoutExpired:
+        raise Exception("Repository check timed out. Is the URL correct?")
 
 def clone_repository(repo_url:str) -> str:
     """ Clones Github repo and returns local path """

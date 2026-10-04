@@ -13,7 +13,8 @@ from  app.config import settings
 
 client = QdrantClient(
     url=settings.QDRANT_URL,
-    api_key=settings.QDRANT_API_KEY
+    api_key=settings.QDRANT_API_KEY,
+    check_compatibility=False
 )
 def create_collection(vector_size:int):
     """ create collection if not exists"""

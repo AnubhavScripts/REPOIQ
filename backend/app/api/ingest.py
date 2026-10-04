@@ -2,7 +2,7 @@ from fastapi import APIRouter,Depends,BackgroundTasks,HTTPException
 from sqlalchemy.orm import Session
 from app.models.schemas import Ingestrequest,IngestResponse,StatusResponse
 from app.database.connection import get_db,SessionLocal
-from app.services.github_service import clone_repository, delete_repository
+from app.services.github_service import clone_repository, delete_repository, validate_repo_accessible
 from app.services.parser_service import parse_repository
 from app.services.chunk_service import chunk_repository_files
 from app.services.embedding_Service import generate_embeddings
@@ -11,7 +11,8 @@ from app.database.crud import (
     create_repository,
     create_indexing_job,
     update_indexing_job_status,
-    get_job_status
+    get_job_status,
+    get_repository_by_url,
 )
 router = APIRouter()
 
@@ -66,8 +67,24 @@ def process_repository(
 def ingest_repository(
   request:Ingestrequest,
   background_tasks:BackgroundTasks,
-  db:Session= Depends(get_db) #fast api call the get_db and gives session automatically  using dependency injection
+  db:Session= Depends(get_db)
 ):
+  # --- 1. Pre-check: validate the repo is public and reachable ---
+  try:
+    validate_repo_accessible(request.repo_url)
+  except Exception as e:
+    raise HTTPException(status_code=400, detail=str(e))
+
+  # --- 2. Dedup: return existing repo_id if already indexed ---
+  existing = get_repository_by_url(db=db, repo_url=request.repo_url)
+  if existing:
+    job = get_job_status(db=db, repo_id=existing.id)
+    if job and job.status == "COMPLETED":
+      return IngestResponse(
+        repo_id=str(existing.id),
+        status="COMPLETED"
+      )
+
   try:
     repository=create_repository(
       db=db,
@@ -108,5 +125,3 @@ def get_status(
     status=job.status,
     error_message=job.error_message
   )
-
-
